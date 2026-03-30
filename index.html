@@ -100,9 +100,11 @@ input[type=text] {
 
 #chat {
   display: none;
-  -webkit-flex-direction: column; flex-direction: column;
+  -webkit-flex-direction: column;
+  flex-direction: column;
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
+  overflow: hidden;
 }
 .header {
   background: #161616;
@@ -298,8 +300,10 @@ function startChat() {
   document.getElementById('partnerAvatar').textContent = partnerEmoji;
 
   document.getElementById('setup').style.display = 'none';
-  document.getElementById('chat').style.display = '-webkit-flex';
-  document.getElementById('chat').style.display = 'flex';
+  var chatEl = document.getElementById('chat');
+  chatEl.style.display = 'block';
+  chatEl.style.display = '-webkit-flex';
+  chatEl.style.display = 'flex';
 
   loadMessages();
   pollTimer = setInterval(pollMessages, 3000);
@@ -419,8 +423,10 @@ function exitChat() {
   clearInterval(statusTimer);
   lastId = 0;
   document.getElementById('messages').innerHTML = '<div class="empty" id="emptyState">💬 Сообщений пока нет<br><span style="font-size:12px">Напиши первым!</span></div>';
-  document.getElementById('setup').style.display = '-webkit-flex';
-  document.getElementById('setup').style.display = 'flex';
+  var setupEl = document.getElementById('setup');
+  setupEl.style.display = 'block';
+  setupEl.style.display = '-webkit-flex';
+  setupEl.style.display = 'flex';
   document.getElementById('chat').style.display = 'none';
 }
 
