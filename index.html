@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>MyChat</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body {
+  background: #0d0d0d;
+  color: #f0f0f0;
+  font-family: -apple-system, Helvetica, Arial, sans-serif;
+  height: 100vh;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-direction: column;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#setup {
+  -webkit-flex: 1; flex: 1;
+  display: -webkit-flex; display: flex;
+  -webkit-flex-direction: column; flex-direction: column;
+  -webkit-align-items: center; align-items: center;
+  -webkit-justify-content: center; justify-content: center;
+  padding: 20px;
+}
+.logo { font-size: 40px; font-weight: 700; color: #00e5a0; margin-bottom: 6px; text-align: center; }
+.logo span { color: #f0f0f0; }
+.subtitle { color: #666; font-size: 13px; text-align: center; margin-bottom: 20px; line-height: 1.5; }
+
+.card {
+  width: 100%; max-width: 340px;
+  background: #161616;
+  border: 1px solid #2a2a2a;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 14px;
+}
+.lbl { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; margin-top: 14px; }
+.lbl:first-child { margin-top: 0; }
+
+input[type=text] {
+  width: 100%;
+  background: #0d0d0d;
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+  padding: 12px 16px;
+  color: #f0f0f0;
+  font-size: 16px;
+  outline: none;
+  -webkit-appearance: none;
+  display: block;
+}
+
+.role-picker { display: -webkit-flex; display: flex; gap: 8px; }
+.role-btn {
+  -webkit-flex: 1; flex: 1;
+  padding: 12px 8px;
+  border-radius: 10px;
+  border: 1px solid #2a2a2a;
+  background: #0d0d0d;
+  color: #666;
+  font-size: 14px;
+  cursor: pointer;
+  text-align: center;
+  -webkit-appearance: none;
+  display: block;
+}
+.role-btn.active { border-color: #00e5a0; color: #00e5a0; background: #001a0e; }
+
+.btn-main {
+  background: #00e5a0;
+  color: #000;
+  border: none;
+  border-radius: 10px;
+  padding: 16px;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 16px;
+  -webkit-appearance: none;
+  display: block;
+}
+
+.hint {
+  background: #001030;
+  border: 1px solid #003080;
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 12px;
+  color: #6ab0ff;
+  line-height: 1.6;
+  text-align: center;
+  max-width: 340px;
+  width: 100%;
+}
+
+#chat {
+  -webkit-flex: 1; flex: 1;
+  display: none;
+  -webkit-flex-direction: column; flex-direction: column;
+  height: 100vh;
+}
+.header {
+  background: #161616;
+  border-bottom: 1px solid #2a2a2a;
+  padding: 10px 14px;
+  display: -webkit-flex; display: flex;
+  -webkit-align-items: center; align-items: center;
+  -webkit-justify-content: space-between; justify-content: space-between;
+}
+.header-left { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; }
+.avatar {
+  width: 36px; height: 36px;
+  border-radius: 18px;
+  background: #00e5a0;
+  display: -webkit-flex; display: flex;
+  -webkit-align-items: center; align-items: center;
+  -webkit-justify-content: center; justify-content: center;
+  font-size: 18px;
+  margin-right: 10px;
+}
+.chat-name { font-size: 14px; font-weight: 600; }
+.chat-status { font-size: 11px; color: #666; margin-top: 1px; }
+.dot { display: inline-block; width: 6px; height: 6px; border-radius: 3px; background: #444; margin-right: 4px; }
+.dot.on { background: #00e5a0; }
+.exit-btn {
+  background: transparent;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  padding: 6px 12px;
+  color: #666;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+#messages {
+  -webkit-flex: 1; flex: 1;
+  overflow-y: scroll;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px;
+}
+.msg {
+  max-width: 78%;
+  padding: 9px 13px;
+  border-radius: 16px;
+  font-size: 15px;
+  line-height: 1.5;
+  word-break: break-word;
+  margin-bottom: 7px;
+}
+.msg.me {
+  margin-left: auto;
+  background: #003d22;
+  border: 1px solid #005030;
+  border-bottom-right-radius: 4px;
+}
+.msg.them {
+  margin-right: auto;
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-bottom-left-radius: 4px;
+}
+.msg-time { font-size: 10px; color: #555; margin-top: 3px; text-align: right; }
+.msg.them .msg-time { text-align: left; }
+.msg-sender { font-size: 11px; color: #00e5a0; margin-bottom: 3px; font-weight: 600; }
+.empty { text-align: center; color: #444; font-size: 14px; padding: 40px 20px; }
+
+.input-wrap {
+  background: #161616;
+  border-top: 1px solid #2a2a2a;
+  padding: 10px 12px;
+  display: -webkit-flex; display: flex;
+  -webkit-align-items: flex-end; align-items: flex-end;
+}
+#msgInput {
+  -webkit-flex: 1; flex: 1;
+  background: #0d0d0d;
+  border: 1px solid #2a2a2a;
+  border-radius: 18px;
+  padding: 9px 14px;
+  color: #f0f0f0;
+  font-size: 15px;
+  outline: none;
+  resize: none;
+  line-height: 1.4;
+  -webkit-appearance: none;
+  margin-right: 8px;
+}
+.send-btn {
+  width: 42px; height: 42px;
+  border-radius: 21px;
+  background: #00e5a0;
+  border: none;
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 42px;
+  text-align: center;
+  -webkit-appearance: none;
+  -webkit-flex-shrink: 0;
+  flex-shrink: 0;
+}
+
+.notif {
+  position: fixed; top: 14px; left: 50%;
+  -webkit-transform: translateX(-50%);
+  transform: translateX(-50%);
+  background: #00e5a0; color: #000;
+  padding: 8px 18px; border-radius: 20px;
+  font-size: 13px; font-weight: 600;
+  display: none; z-index: 99;
+}
+</style>
+</head>
+<body>
+
+<div id="setup">
+  <div class="logo">My<span>Chat</span></div>
+  <div class="subtitle">Личный мессенджер между<br>твоими устройствами</div>
+
+  <div class="card">
+    <div class="lbl">Твоё имя</div>
+    <input type="text" id="nameInput" placeholder="Например: Vova" maxlength="20">
+
+    <div class="lbl">Это устройство</div>
+    <div class="role-picker">
+      <button class="role-btn active" id="rolePhone" onclick="selectRole('phone')">📱 Телефон</button>
+      <button class="role-btn" id="roleTablet" onclick="selectRole('tablet')">📟 Планшет</button>
+    </div>
+
+    <div class="lbl">Код чата (одинаковый на обоих)</div>
+    <input type="text" id="roomInput" placeholder="Например: vova333" maxlength="30">
+
+    <button class="btn-main" onclick="startChat()">Войти в чат →</button>
+  </div>
+
+  <div class="hint">💡 Введи одинаковый код на обоих устройствах — и они соединятся</div>
+</div>
+
+<div id="chat">
+  <div class="header">
+    <div class="header-left">
+      <div class="avatar" id="partnerAvatar">?</div>
+      <div>
+        <div class="chat-name" id="partnerName">Ждём...</div>
+        <div class="chat-status"><span class="dot" id="statusDot"></span><span id="statusText">офлайн</span></div>
+      </div>
+    </div>
+    <button class="exit-btn" onclick="exitChat()">Выйти</button>
+  </div>
+
+  <div id="messages">
+    <div class="empty" id="emptyState">💬 Сообщений пока нет<br><span style="font-size:12px">Напиши первым!</span></div>
+  </div>
+
+  <div class="input-wrap">
+    <textarea id="msgInput" rows="1" placeholder="Написать..."></textarea>
+    <button class="send-btn" onclick="sendMessage()">➤</button>
+  </div>
+</div>
+
+<div class="notif" id="notif"></div>
+
+<script>
+var SUPABASE_URL = 'https://pmjycpsfmubdlcvmivxm.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtanljcHNmbXViZGxjdm1pdnhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4NTg5NjAsImV4cCI6MjA5MDQzNDk2MH0.lTorkv8Ky1Mh-3Ucz94GQAFrTv9OrKHFnKh1F3G9AFQ';
+
+var myName = '';
+var myRole = 'phone';
+var roomId = '';
+var lastId = 0;
+var pollTimer = null;
+var heartbeatTimer = null;
+var statusTimer = null;
+
+function selectRole(r) {
+  myRole = r;
+  document.getElementById('rolePhone').className = 'role-btn' + (r === 'phone' ? ' active' : '');
+  document.getElementById('roleTablet').className = 'role-btn' + (r === 'tablet' ? ' active' : '');
+}
+
+function startChat() {
+  var nameVal = document.getElementById('nameInput').value;
+  var roomVal = document.getElementById('roomInput').value;
+  myName = nameVal.replace(/^\s+|\s+$/g, '');
+  roomId = roomVal.replace(/^\s+|\s+$/g, '');
+
+  if (!myName) { showNotif('Введи своё имя'); return; }
+  if (!roomId) { showNotif('Введи код чата'); return; }
+
+  var partnerLabel = myRole === 'phone' ? 'Планшет' : 'Телефон';
+  var partnerEmoji = myRole === 'phone' ? '📟' : '📱';
+  document.getElementById('partnerName').textContent = partnerLabel;
+  document.getElementById('partnerAvatar').textContent = partnerEmoji;
+
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('chat').style.display = '-webkit-flex';
+  document.getElementById('chat').style.display = 'flex';
+
+  loadMessages();
+  pollTimer = setInterval(pollMessages, 3000);
+  heartbeatTimer = setInterval(sendHeartbeat, 8000);
+  statusTimer = setInterval(checkStatus, 6000);
+  sendHeartbeat();
+}
+
+function req(method, path, data, cb) {
+  var xhr = new XMLHttpRequest();
+  xhr.open(method, SUPABASE_URL + '/rest/v1/' + path, true);
+  xhr.setRequestHeader('apikey', SUPABASE_KEY);
+  xhr.setRequestHeader('Authorization', 'Bearer ' + SUPABASE_KEY);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  if (method === 'POST' || method === 'PATCH') {
+    xhr.setRequestHeader('Prefer', 'return=minimal');
+  }
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState === 4) {
+      var result = null;
+      try { result = JSON.parse(xhr.responseText); } catch(e) {}
+      if (cb) cb(xhr.status, result);
+    }
+  };
+  xhr.send(data ? JSON.stringify(data) : null);
+}
+
+function loadMessages() {
+  var path = 'messages?room=eq.' + encodeURIComponent(roomId) + '&order=id.asc&limit=100';
+  req('GET', path, null, function(status, data) {
+    if (!data || !data.length) return;
+    var es = document.getElementById('emptyState');
+    if (es) es.parentNode.removeChild(es);
+    for (var i = 0; i < data.length; i++) {
+      renderMsg(data[i]);
+      if (data[i].id > lastId) lastId = data[i].id;
+    }
+    scrollToBottom();
+  });
+}
+
+function pollMessages() {
+  var path = 'messages?room=eq.' + encodeURIComponent(roomId) + '&id=gt.' + lastId + '&order=id.asc';
+  req('GET', path, null, function(status, data) {
+    if (!data || !data.length) return;
+    var es = document.getElementById('emptyState');
+    if (es) es.parentNode.removeChild(es);
+    for (var i = 0; i < data.length; i++) {
+      renderMsg(data[i]);
+      if (data[i].id > lastId) lastId = data[i].id;
+    }
+    scrollToBottom();
+  });
+}
+
+function renderMsg(m) {
+  var isMe = m.sender === myName;
+  var d = new Date(m.created_at);
+  var h = d.getHours(); if (h < 10) h = '0' + h;
+  var mn = d.getMinutes(); if (mn < 10) mn = '0' + mn;
+  var time = h + ':' + mn;
+
+  var div = document.createElement('div');
+  div.className = 'msg ' + (isMe ? 'me' : 'them');
+  var html = '';
+  if (!isMe) html += '<div class="msg-sender">' + esc(m.sender) + '</div>';
+  html += '<div>' + esc(m.text) + '</div>';
+  html += '<div class="msg-time">' + time + '</div>';
+  div.innerHTML = html;
+  document.getElementById('messages').appendChild(div);
+}
+
+function sendMessage() {
+  var input = document.getElementById('msgInput');
+  var text = input.value.replace(/^\s+|\s+$/g, '');
+  if (!text) return;
+  input.value = '';
+
+  req('POST', 'messages', { room: roomId, sender: myName, text: text }, function(status) {
+    if (status < 200 || status > 299) showNotif('Ошибка отправки');
+  });
+}
+
+function sendHeartbeat() {
+  var hbRoom = '__hb_' + myRole + '_' + roomId;
+  req('GET', 'messages?room=eq.' + encodeURIComponent(hbRoom) + '&sender=eq.' + encodeURIComponent(myName), null, function(status, data) {
+    if (data && data.length > 0) {
+      req('PATCH', 'messages?room=eq.' + encodeURIComponent(hbRoom) + '&sender=eq.' + encodeURIComponent(myName), { text: String(Date.now()) }, null);
+    } else {
+      req('POST', 'messages', { room: hbRoom, sender: myName, text: String(Date.now()) }, null);
+    }
+  });
+}
+
+function checkStatus() {
+  var partnerRole = myRole === 'phone' ? 'tablet' : 'phone';
+  var hbRoom = '__hb_' + partnerRole + '_' + roomId;
+  req('GET', 'messages?room=eq.' + encodeURIComponent(hbRoom) + '&limit=1', null, function(status, data) {
+    var dot = document.getElementById('statusDot');
+    var st = document.getElementById('statusText');
+    if (data && data.length > 0) {
+      var ts = parseInt(data[0].text, 10);
+      if (Date.now() - ts < 25000) {
+        dot.className = 'dot on';
+        st.textContent = 'онлайн';
+        return;
+      }
+    }
+    dot.className = 'dot';
+    st.textContent = 'офлайн';
+  });
+}
+
+function exitChat() {
+  clearInterval(pollTimer);
+  clearInterval(heartbeatTimer);
+  clearInterval(statusTimer);
+  lastId = 0;
+  document.getElementById('messages').innerHTML = '<div class="empty" id="emptyState">💬 Сообщений пока нет<br><span style="font-size:12px">Напиши первым!</span></div>';
+  document.getElementById('setup').style.display = '-webkit-flex';
+  document.getElementById('setup').style.display = 'flex';
+  document.getElementById('chat').style.display = 'none';
+}
+
+function scrollToBottom() {
+  var c = document.getElementById('messages');
+  c.scrollTop = c.scrollHeight;
+}
+
+function showNotif(msg) {
+  var n = document.getElementById('notif');
+  n.textContent = msg;
+  n.style.display = 'block';
+  setTimeout(function() { n.style.display = 'none'; }, 2500);
+}
+
+function esc(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+</script>
+</body>
+</html>
