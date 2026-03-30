@@ -106,9 +106,12 @@ body::before{
   font-size:15px;font-weight:700;font-family:var(--font);
   cursor:pointer;margin-top:20px;
   letter-spacing:1px;text-transform:uppercase;
-  transition:opacity .2s,transform .1s;
+  transition:opacity .2s;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+  -webkit-appearance:none;
 }
-.btn-primary:active{opacity:.85;transform:scale(.98);}
+.btn-primary:active{opacity:.75;}
 
 .tg-hint{
   margin-top:12px;font-size:11px;color:var(--muted);
@@ -136,6 +139,8 @@ body::before{
   border-radius:8px;padding:6px 10px;
   color:var(--muted);font-size:14px;cursor:pointer;
   font-family:var(--font);transition:border-color .2s,color .2s;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+  -webkit-appearance:none;
 }
 .icon-btn:hover{border-color:var(--accent);color:var(--accent);}
 
@@ -360,6 +365,7 @@ body::before{
   background:var(--surface2);border:1px solid var(--border);
   cursor:pointer;font-size:18px;line-height:40px;text-align:center;
   flex-shrink:0;margin-right:8px;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
 }
 #msgInput{
   flex:1;background:var(--bg);border:1px solid var(--border);
@@ -373,6 +379,8 @@ body::before{
   width:40px;height:40px;border-radius:20px;background:var(--accent);
   border:none;cursor:pointer;font-size:18px;line-height:40px;
   text-align:center;flex-shrink:0;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+  -webkit-appearance:none;
 }
 
 /* Action menu */
@@ -419,7 +427,8 @@ body::before{
   padding:10px 14px;background:rgba(15,20,16,.97);
   border-bottom:1px solid var(--border);
   transform:translateY(-100%);transition:transform .3s ease;
-  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(6px);
+  backdrop-filter:blur(6px);
 }
 .msg-banner.show{display:block;transform:translateY(0);}
 .banner-inner{display:flex;align-items:center;max-width:500px;margin:0 auto;}
@@ -871,6 +880,7 @@ function finishLogin() {
   showScreen('screenHome');
   loadChats();
   startHomePolling();
+  startTgPolling();
 }
 
 function logout() {
@@ -1647,13 +1657,57 @@ function playPing(){
 function vibrate(){try{if(navigator.vibrate)navigator.vibrate([60,30,60]);}catch(e){}}
 function toggleSound(){soundEnabled=!soundEnabled;var b=document.getElementById('soundBtn');if(b)b.textContent=soundEnabled?'🔔':'🔕';showToast(soundEnabled?'🔔 Звук включён':'🔕 Звук выключен');if(soundEnabled)playPing();}
 
-// ===== LIGHTBOX =====
+// ===== TELEGRAM BOT POLLING =====
+var tgUpdateOffset = 0;
+var tgPollTimer = null;
+
+function startTgPolling() {
+  if (tgPollTimer) clearInterval(tgPollTimer);
+  // Poll immediately then every 5s
+  pollTgUpdates();
+  tgPollTimer = setInterval(pollTgUpdates, 5000);
+}
+
+function pollTgUpdates() {
+  var xhr = new XMLHttpRequest();
+  var url = 'https://api.telegram.org/bot' + TG_BOT_TOKEN + '/getUpdates?timeout=0&offset=' + (tgUpdateOffset + 1);
+  xhr.open('GET', url, true);
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState !== 4) return;
+    try {
+      var data = JSON.parse(xhr.responseText);
+      if (!data.ok || !data.result || !data.result.length) return;
+      data.result.forEach(function(upd) {
+        if (upd.update_id > tgUpdateOffset) tgUpdateOffset = upd.update_id;
+        var msg = upd.message;
+        if (!msg) return;
+        var chatId = String(msg.chat.id);
+        var text = (msg.text || '').trim();
+
+        if (text === '/start' || text.indexOf('/start') === 0) {
+          // Send welcome message
+          sendTgMessage(chatId,
+            '👋 Привет! Я бот MyChat.\n\n' +
+            'Чтобы получать уведомления, перейди в профиль → Telegram и введи свой Telegram ID:\n\n' +
+            '<b>' + chatId + '</b>\n\n' +
+            'Скопируй этот ID и вставь в приложение.'
+          );
+        } else if (text.indexOf('/id') === 0) {
+          sendTgMessage(chatId, 'Твой Telegram ID: <b>' + chatId + '</b>');
+        }
+      });
+    } catch(e) {}
+  };
+  xhr.send();
+}
+
+
 function openLightbox(url){var lb=document.getElementById('lightbox');document.getElementById('lightboxImg').src=url;lb.classList.add('open');}
 function closeLightbox(){var lb=document.getElementById('lightbox');lb.classList.remove('open');document.getElementById('lightboxImg').src='';}
 
 // ===== TIMERS =====
 function clearChatTimers(){ clearInterval(pollTimer);clearInterval(heartbeatTimer);clearInterval(statusTimer); pollTimer=heartbeatTimer=statusTimer=null; }
-function clearAllTimers(){ clearChatTimers();clearInterval(homePolltimer);homePolltimer=null; }
+function clearAllTimers(){ clearChatTimers();clearInterval(homePolltimer);homePolltimer=null;clearInterval(tgPollTimer);tgPollTimer=null; }
 
 // ===== UTILS =====
 function scrollToBottom(){ var c=document.getElementById('messages');c.scrollTop=c.scrollHeight; }
