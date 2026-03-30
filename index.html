@@ -1176,14 +1176,23 @@ function backToHome() {
 // ===== MESSAGES =====
 function loadMessages() {
   if (!currentChatId) return;
-  var path = 'messages?room=eq.' + encodeURIComponent(currentChatId) + '&order=id.asc&limit=100';
+  var path = 'messages?room=eq.' + encodeURIComponent(currentChatId) + '&order=id.asc&limit=200';
   req('GET', path, null, function(status, data) {
     if (!data || !data.length) { isFirstLoad = false; return; }
     var es = document.getElementById('emptyState');
     if (es) es.parentNode.removeChild(es);
+    // First pass: render regular messages only
     for (var i = 0; i < data.length; i++) {
-      renderMsg(data[i]);
-      if (data[i].id > lastId) lastId = data[i].id;
+      var m = data[i];
+      if (m.id > lastId) lastId = m.id;
+      if (m.text.indexOf('[react]') === 0 || m.text.indexOf('[del]') === 0) continue;
+      renderMsg(m);
+    }
+    // Second pass: apply reactions and deletes (DOM elements now exist)
+    for (var j = 0; j < data.length; j++) {
+      var m2 = data[j];
+      if (m2.text.indexOf('[react]') === 0) handleReactionMsg(m2);
+      else if (m2.text.indexOf('[del]') === 0) handleDeleteMsg(m2);
     }
     scrollToBottom();
     isFirstLoad = false;
@@ -1441,12 +1450,16 @@ function checkDMStatus() {
 
 // ===== TG NOTIFICATIONS =====
 function sendTgNotification(senderName, text) {
-  // Look up sender's telegram_id, then notify the RECIPIENT (currentChatPartner or group members)
+  // Notify ME (myName) when someone writes to me
   if (currentChatType === 'dm') {
-    notifyUser(currentChatPartner, senderName, text);
+    notifyUser(myName, senderName, text);
+  } else if (currentChatType === 'group') {
+    req('GET', 'chats?id=eq.' + encodeURIComponent(currentChatId), null, function(s, chats) {
+      if (chats && chats[0] && chats[0].members) {
+        notifyGroupMembers(chats[0].members, senderName, text);
+      }
+    });
   }
-  // For group: notify all members except sender
-  // (handled below)
 }
 
 function notifyUser(username, senderName, text) {
@@ -1481,42 +1494,7 @@ function sendTgMessage(chatId, text) {
   xhr.send(JSON.stringify({chat_id: chatId, text: text, parse_mode: 'HTML'}));
 }
 
-// Override pollMessages to also notify group members
-var _origPoll = pollMessages;
-pollMessages = function() {
-  if (!currentChatId) return;
-  var path = 'messages?room=eq.' + encodeURIComponent(currentChatId) + '&id=gt.' + lastId + '&order=id.asc';
-  req('GET', path, null, function(status, data) {
-    if (!data || !data.length) return;
-    var es = document.getElementById('emptyState');
-    if (es) es.parentNode.removeChild(es);
-    for (var i = 0; i < data.length; i++) {
-      var m = data[i];
-      if (m.text.indexOf('[react]') === 0) { handleReactionMsg(m); }
-      else if (m.text.indexOf('[del]') === 0) { handleDeleteMsg(m); }
-      else {
-        if (!isFirstLoad) renderMsg(m);
-        if (m.sender !== myName && !isFirstLoad) {
-          triggerNotification(m.sender, m.text);
-          // TG notify
-          if (currentChatType === 'dm') {
-            notifyUser(currentChatPartner, m.sender, m.text);
-          } else if (currentChatType === 'group') {
-            // get members from chat record
-            req('GET', 'chats?id=eq.' + encodeURIComponent(currentChatId), null, function(s, chats) {
-              if (chats && chats[0] && chats[0].members) {
-                notifyGroupMembers(chats[0].members, m.sender, m.text);
-              }
-            });
-          }
-        }
-      }
-      if (m.id > lastId) lastId = m.id;
-    }
-    if (!isFirstLoad) scrollToBottom();
-    isFirstLoad = false;
-  });
-};
+// TG notify is now handled inside the main pollMessages
 
 // ===== NEW GROUP =====
 var selectedGroupMembers = [];
@@ -1657,13 +1635,13 @@ function playPing(){
 function vibrate(){try{if(navigator.vibrate)navigator.vibrate([60,30,60]);}catch(e){}}
 function toggleSound(){soundEnabled=!soundEnabled;var b=document.getElementById('soundBtn');if(b)b.textContent=soundEnabled?'🔔':'🔕';showToast(soundEnabled?'🔔 Звук включён':'🔕 Звук выключен');if(soundEnabled)playPing();}
 
+
 // ===== TELEGRAM BOT POLLING =====
 var tgUpdateOffset = 0;
 var tgPollTimer = null;
 
 function startTgPolling() {
   if (tgPollTimer) clearInterval(tgPollTimer);
-  // Poll immediately then every 5s
   pollTgUpdates();
   tgPollTimer = setInterval(pollTgUpdates, 5000);
 }
@@ -1683,14 +1661,12 @@ function pollTgUpdates() {
         if (!msg) return;
         var chatId = String(msg.chat.id);
         var text = (msg.text || '').trim();
-
         if (text === '/start' || text.indexOf('/start') === 0) {
-          // Send welcome message
           sendTgMessage(chatId,
-            '👋 Привет! Я бот MyChat.\n\n' +
-            'Чтобы получать уведомления, перейди в профиль → Telegram и введи свой Telegram ID:\n\n' +
+            '\u{1F44B} Привет! Я бот MyChat.\n\n' +
+            'Чтобы получать уведомления, перейди в Профиль → Telegram и введи свой ID:\n\n' +
             '<b>' + chatId + '</b>\n\n' +
-            'Скопируй этот ID и вставь в приложение.'
+            'Скопируй это число и вставь в поле.'
           );
         } else if (text.indexOf('/id') === 0) {
           sendTgMessage(chatId, 'Твой Telegram ID: <b>' + chatId + '</b>');
@@ -1701,13 +1677,13 @@ function pollTgUpdates() {
   xhr.send();
 }
 
-
+// ===== LIGHTBOX =====
 function openLightbox(url){var lb=document.getElementById('lightbox');document.getElementById('lightboxImg').src=url;lb.classList.add('open');}
 function closeLightbox(){var lb=document.getElementById('lightbox');lb.classList.remove('open');document.getElementById('lightboxImg').src='';}
 
 // ===== TIMERS =====
 function clearChatTimers(){ clearInterval(pollTimer);clearInterval(heartbeatTimer);clearInterval(statusTimer); pollTimer=heartbeatTimer=statusTimer=null; }
-function clearAllTimers(){ clearChatTimers();clearInterval(homePolltimer);homePolltimer=null;clearInterval(tgPollTimer);tgPollTimer=null; }
+function clearAllTimers(){ clearChatTimers();clearInterval(homePolltimer);homePolltimer=null;if(tgPollTimer){clearInterval(tgPollTimer);tgPollTimer=null;} }
 
 // ===== UTILS =====
 function scrollToBottom(){ var c=document.getElementById('messages');c.scrollTop=c.scrollHeight; }
