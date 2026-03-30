@@ -91,8 +91,8 @@ input[type=text] { width: 100%; background: var(--bg); border: 1px solid var(--b
 
 /* Action menu */
 #actionMenu { display: none; position: fixed; z-index: 300; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 6px; min-width: 160px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
-.action-emojis { display: -webkit-flex; display: flex; gap: 2px; padding: 6px 4px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
-.action-emoji { font-size: 22px; padding: 4px 6px; cursor: pointer; border-radius: 8px; border: none; background: transparent; }
+.action-emojis { display: -webkit-flex; display: flex; gap: 2px; padding: 6px 4px; border-bottom: 1px solid var(--border); margin-bottom: 4px; -webkit-flex-wrap: wrap; flex-wrap: wrap; max-width: 230px; }
+.action-emoji { font-size: 22px; padding: 4px 6px; cursor: pointer; border-radius: 8px; border: none; background: transparent; -webkit-tap-highlight-color: rgba(255,255,255,0.1); }
 .action-emoji:active { background: rgba(255,255,255,0.1); }
 .action-item { display: block; width: 100%; background: transparent; border: none; color: var(--text); font-size: 14px; padding: 9px 12px; text-align: left; cursor: pointer; border-radius: 8px; }
 .action-item:active { background: rgba(255,255,255,0.08); }
@@ -252,12 +252,19 @@ input[type=text] { width: 100%; background: var(--bg); border: 1px solid var(--b
 <!-- Action menu -->
 <div id="overlay" onclick="closeActionMenu()"></div>
 <div id="actionMenu">
-  <div class="action-emojis">
-    <button class="action-emoji" onclick="addReaction('👍')">👍</button>
-    <button class="action-emoji" onclick="addReaction('❤️')">❤️</button>
-    <button class="action-emoji" onclick="addReaction('😂')">😂</button>
-    <button class="action-emoji" onclick="addReaction('😮')">😮</button>
-    <button class="action-emoji" onclick="addReaction('😢')">😢</button>
+  <div class="action-emojis" id="reactionEmojis">
+    <button class="action-emoji" onclick="addReaction('👍')" ontouchend="touchReact(event,'👍')">👍</button>
+    <button class="action-emoji" onclick="addReaction('❤️')" ontouchend="touchReact(event,'❤️')">❤️</button>
+    <button class="action-emoji" onclick="addReaction('😂')" ontouchend="touchReact(event,'😂')">😂</button>
+    <button class="action-emoji" onclick="addReaction('😮')" ontouchend="touchReact(event,'😮')">😮</button>
+    <button class="action-emoji" onclick="addReaction('😢')" ontouchend="touchReact(event,'😢')">😢</button>
+    <button class="action-emoji" onclick="addReaction('🔥')" ontouchend="touchReact(event,'🔥')">🔥</button>
+    <button class="action-emoji" onclick="addReaction('👎')" ontouchend="touchReact(event,'👎')">👎</button>
+    <button class="action-emoji" onclick="addReaction('🎉')" ontouchend="touchReact(event,'🎉')">🎉</button>
+    <button class="action-emoji" onclick="addReaction('💯')" ontouchend="touchReact(event,'💯')">💯</button>
+    <button class="action-emoji" onclick="addReaction('😍')" ontouchend="touchReact(event,'😍')">😍</button>
+    <button class="action-emoji" onclick="addReaction('🤔')" ontouchend="touchReact(event,'🤔')">🤔</button>
+    <button class="action-emoji" onclick="addReaction('💀')" ontouchend="touchReact(event,'💀')">💀</button>
   </div>
   <button class="action-item" onclick="replyTo()">↩️ Ответить</button>
   <button class="action-item danger" id="deleteBtn" onclick="deleteMsg()" style="display:none">🗑 Удалить</button>
@@ -488,12 +495,15 @@ function renderMsg(m) {
 }
 
 function handleReactionMsg(m) {
-  // format: [react]msgId:emoji:sender
+  // format: [react]msgId|emoji|sender
   var data = m.text.replace('[react]', '');
-  var parts = data.split(':');
-  var msgId = parts[0];
-  var emoji = parts[1];
-  var sender = parts[2];
+  // Support both old ':' format and new '|' format
+  var sep = data.indexOf('|') !== -1 ? '|' : ':';
+  var firstSep = data.indexOf(sep);
+  var lastSep = data.lastIndexOf(sep);
+  var msgId = data.substring(0, firstSep);
+  var emoji = data.substring(firstSep + 1, lastSep);
+  var sender = data.substring(lastSep + 1);
   var container = document.getElementById('reactions_' + msgId);
   if (!container) return;
   updateReactionBadge(container, emoji, sender);
@@ -565,13 +575,21 @@ function closeActionMenu() {
   activeMsg = null;
 }
 
+function touchReact(e, emoji) {
+  e.preventDefault(); // prevent subsequent click event
+  addReaction(emoji);
+}
+
 function addReaction(emoji) {
   if (!activeMsg) return;
+  var msgId = activeMsg.id;
+  var sender = myName;
   closeActionMenu();
-  var text = '[react]' + activeMsg.id + ':' + emoji + ':' + myName;
+  // Use | as separator instead of : to avoid conflicts with usernames
+  var text = '[react]' + msgId + '|' + emoji + '|' + sender;
   req('POST', 'messages', { room: roomId, sender: myName, text: text }, null);
   // Optimistic update
-  var container = document.getElementById('reactions_' + activeMsg.id);
+  var container = document.getElementById('reactions_' + msgId);
   if (container) updateReactionBadge(container, emoji, myName);
 }
 
