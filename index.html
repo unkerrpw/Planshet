@@ -1214,7 +1214,6 @@ function pollMessages() {
         if (!isFirstLoad) renderMsg(m);
         if (m.sender !== myName && !isFirstLoad) {
           triggerNotification(m.sender, m.text);
-          sendTgNotification(m.sender, m.text);
         }
       }
       if (m.id > lastId) lastId = m.id;
@@ -1243,6 +1242,7 @@ function sendMessage() {
     req('PATCH', 'chats?id=eq.' + encodeURIComponent(currentChatId), {updated_at: new Date().toISOString()}, null);
     if (d && d[0]) { renderMsg(d[0]); if(d[0].id > lastId) lastId = d[0].id; scrollToBottom(); }
     else loadMessages();
+    notifyRecipients(myName, msgText);
   });
 }
 
@@ -1356,6 +1356,7 @@ function uploadFile(file) {
         req('POST','messages',body,function(s,d){
           req('PATCH','chats?id=eq.'+encodeURIComponent(currentChatId),{updated_at:new Date().toISOString()},null);
           if(d&&d[0]){renderMsg(d[0]);if(d[0].id>lastId)lastId=d[0].id;scrollToBottom();}
+          notifyRecipients(myName, prefix+url);
         });
       } else { showToast('Ошибка загрузки'); }
     }
@@ -1388,7 +1389,10 @@ function replyTo() {
 function cancelReply(){ replyMsg=null; document.getElementById('replyBar').style.display='none'; }
 function addReaction(emoji) {
   if (!activeMsg) return;
-  var body = {room:currentChatId, sender:myName, text:'[react]'+activeMsg.id+'|'+emoji+'|'+myName, created_at:new Date().toISOString()};
+  var reactText = '[react]'+activeMsg.id+'|'+emoji+'|'+myName;
+  // Сразу показываем реакцию локально, не ждём поллинга
+  handleReactionMsg({text: reactText});
+  var body = {room:currentChatId, sender:myName, text:reactText, created_at:new Date().toISOString()};
   req('POST','messages',body,function(s,d){if(d&&d[0]&&d[0].id>lastId)lastId=d[0].id;});
   closeActionMenu();
 }
@@ -1449,41 +1453,50 @@ function checkDMStatus() {
 }
 
 // ===== TG NOTIFICATIONS =====
-function sendTgNotification(senderName, text) {
-  // Notify ME (myName) when someone writes to me
+function notifyRecipients(senderName, text) {
+  var displayText = text;
+  if (displayText.indexOf('[reply:') === 0) displayText = displayText.substring(displayText.indexOf(']')+1);
+  if (displayText.indexOf('[img]') === 0) displayText = '📷 Фото';
+  else if (displayText.indexOf('[video]') === 0) displayText = '🎥 Видео';
+  else if (displayText.indexOf('[audio]') === 0) displayText = '🎵 Аудио';
+  else if (displayText.indexOf('[file]') === 0) displayText = '📎 Файл';
+  else if (displayText.indexOf('[pdf]') === 0) displayText = '📄 PDF';
+
+  var msg = '🔔 Новое сообщение!\nОтправитель: @' + senderName + '\nСообщение: ' + displayText;
+
   if (currentChatType === 'dm') {
-    notifyUser(myName, senderName, text);
+    // Уведомляем партнёра только если он не онлайн
+    var hbRoom = '__hb_' + currentChatId;
+    req('GET', 'messages?room=eq.'+encodeURIComponent(hbRoom)+'&order=id.desc&limit=10', null, function(s, data) {
+      var partnerOnline = false;
+      if (data) {
+        var now = Date.now();
+        partnerOnline = data.some(function(m) {
+          if (m.sender.indexOf(currentChatPartner+'_') !== 0) return false;
+          return (now - parseInt(m.text)) < 20000;
+        });
+      }
+      if (!partnerOnline) {
+        notifyUserTg(currentChatPartner, msg);
+      }
+    });
   } else if (currentChatType === 'group') {
     req('GET', 'chats?id=eq.' + encodeURIComponent(currentChatId), null, function(s, chats) {
       if (chats && chats[0] && chats[0].members) {
-        notifyGroupMembers(chats[0].members, senderName, text);
+        chats[0].members.forEach(function(username) {
+          if (username === senderName) return;
+          notifyUserTg(username, msg);
+        });
       }
     });
   }
 }
 
-function notifyUser(username, senderName, text) {
+function notifyUserTg(username, msg) {
   if (!username) return;
   req('GET', 'users?username=eq.' + encodeURIComponent(username), null, function(s, data) {
     if (!data || !data[0] || !data[0].telegram_id) return;
-    var tgId = data[0].telegram_id;
-    var displayText = text;
-    if (displayText.indexOf('[reply:') === 0) displayText = displayText.substring(displayText.indexOf(']')+1);
-    if (displayText.indexOf('[img]') === 0) displayText = '📷 Фото';
-    else if (displayText.indexOf('[video]') === 0) displayText = '🎥 Видео';
-    else if (displayText.indexOf('[audio]') === 0) displayText = '🎵 Аудио';
-    else if (displayText.indexOf('[file]') === 0) displayText = '📎 Файл';
-    else if (displayText.indexOf('[pdf]') === 0) displayText = '📄 PDF';
-    var chatLabel = currentChatType === 'group' ? document.getElementById('chName').textContent : '@' + senderName;
-    var msg = '💬 <b>' + senderName + '</b> в ' + chatLabel + ':\n' + displayText;
-    sendTgMessage(tgId, msg);
-  });
-}
-
-function notifyGroupMembers(members, senderName, text) {
-  members.forEach(function(username) {
-    if (username === myName) return;
-    notifyUser(username, senderName, text);
+    sendTgMessage(data[0].telegram_id, msg);
   });
 }
 
