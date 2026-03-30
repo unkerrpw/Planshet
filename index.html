@@ -99,10 +99,10 @@ input[type=text] {
 }
 
 #chat {
-  -webkit-flex: 1; flex: 1;
   display: none;
   -webkit-flex-direction: column; flex-direction: column;
-  height: 100vh;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
 }
 .header {
   background: #161616;
@@ -142,6 +142,7 @@ input[type=text] {
   overflow-y: scroll;
   -webkit-overflow-scrolling: touch;
   padding: 12px;
+  min-height: 0;
 }
 .msg {
   max-width: 78%;
@@ -434,6 +435,16 @@ function showNotif(msg) {
   n.style.display = 'block';
   setTimeout(function() { n.style.display = 'none'; }, 2500);
 }
+
+// iOS keyboard fix
+document.addEventListener('DOMContentLoaded', function() {
+  var inp = document.getElementById('msgInput');
+  if (inp) {
+    inp.addEventListener('focus', function() {
+      setTimeout(function() { scrollToBottom(); }, 500);
+    });
+  }
+});
 
 function esc(str) {
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
