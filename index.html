@@ -788,6 +788,8 @@ var allUsers = []; // usernames from users table
 var groupMembers = []; // for new group modal
 var searchDebounce = null;
 var currentTheme = 'green';
+var renderedMsgIds = {};   // защита от дублирования сообщений
+var processedReacts = {};  // защита от дублирования реакций
 
 // ===== THEME =====
 var themes = {
@@ -1142,6 +1144,8 @@ function openChat(chat) {
   currentChatType = chat.type;
   currentChatPartner = chat._partner || null;
   lastId = 0; replyMsg = null; isFirstLoad = true; unreadCount = 0;
+  renderedMsgIds = {};
+  processedReacts = {};
 
   // Header
   var displayName = chat.name;
@@ -1260,6 +1264,8 @@ function parseMsg(text) {
 function renderMsg(m) {
   if (m.text.indexOf('[react]') === 0) { handleReactionMsg(m); return; }
   if (m.text.indexOf('[del]') === 0) { handleDeleteMsg(m); return; }
+  if (m.id && renderedMsgIds[m.id]) return;
+  if (m.id) renderedMsgIds[m.id] = true;
 
   var isMe = m.sender === myName;
   var time = formatTime(m.created_at);
@@ -1400,6 +1406,10 @@ function handleReactionMsg(m) {
   var data = m.text.replace('[react]','');
   var parts = data.split('|');
   var msgId = parts[0]; var emoji = parts[1]; var sender = parts[2];
+  // Защита от дублей: один и тот же emoji от одного юзера на одно сообщение — один раз
+  var key = msgId + '|' + emoji + '|' + sender;
+  if (processedReacts[key]) return;
+  processedReacts[key] = true;
   var container = document.getElementById('reactions_'+msgId);
   if (!container) return;
   var existing = container.querySelector('[data-emoji="'+emoji+'"]');
