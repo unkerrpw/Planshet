@@ -516,7 +516,15 @@ function updateReactionBadge(container, emoji, sender) {
     if (badges[i].getAttribute('data-emoji') === emoji) { existing = badges[i]; break; }
   }
   if (existing) {
-    var count = parseInt(existing.getAttribute('data-count') || '1', 10) + 1;
+    // Check if sender already reacted with this emoji
+    var senders = existing.getAttribute('data-senders') || '';
+    var senderList = senders ? senders.split(',') : [];
+    for (var j = 0; j < senderList.length; j++) {
+      if (senderList[j] === sender) return; // already reacted, skip
+    }
+    senderList.push(sender);
+    existing.setAttribute('data-senders', senderList.join(','));
+    var count = senderList.length;
     existing.setAttribute('data-count', count);
     var sp = existing.getElementsByTagName('span')[0];
     if (sp) sp.textContent = count;
@@ -526,6 +534,7 @@ function updateReactionBadge(container, emoji, sender) {
     badge.className = 'reaction-badge' + (sender === myName ? ' mine' : '');
     badge.setAttribute('data-emoji', emoji);
     badge.setAttribute('data-count', '1');
+    badge.setAttribute('data-senders', sender);
     badge.innerHTML = emoji + ' <span>1</span>';
     container.appendChild(badge);
   }
@@ -609,8 +618,9 @@ function cancelReply() {
 
 function deleteMsg() {
   if (!activeMsg || activeMsg.sender !== myName) return;
+  var msgId = activeMsg.id; // capture BEFORE closeActionMenu nulls activeMsg
   closeActionMenu();
-  var text = '[del]' + activeMsg.id;
+  var text = '[del]' + msgId;
   req('POST', 'messages', { room: roomId, sender: myName, text: text }, null);
   handleDeleteMsg({ text: text });
 }
@@ -735,11 +745,13 @@ function checkStatus() {
 // ---- NOTIFICATIONS ----
 
 function initNotifications() {
-  // Unlock Web Audio on first touch (required by iOS)
+  // Unlock audio immediately (we're inside a user gesture from the start button)
+  unlockAudio();
+  // Also re-unlock on next touch just in case
   document.addEventListener('touchstart', unlockAudio, { once: true });
   document.addEventListener('click', unlockAudio, { once: true });
 
-  // Also try Web Notifications if supported (Android/desktop bonus)
+  // Show notification permission bar
   if ('Notification' in window && Notification.permission !== 'denied' && Notification.permission !== 'granted') {
     var bar = document.getElementById('notifAskBar');
     if (bar) { bar.style.display = '-webkit-flex'; bar.style.display = 'flex'; }
