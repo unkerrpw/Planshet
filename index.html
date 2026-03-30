@@ -192,25 +192,20 @@ input[type=text] {
   <div class="card">
     <div class="lbl">Твоё имя</div>
     <input type="text" id="nameInput" placeholder="Например: Vova" maxlength="20">
-    <div class="lbl">Это устройство</div>
-    <div class="role-picker">
-      <button class="role-btn active" id="rolePhone" onclick="selectRole('phone')">📱 Телефон</button>
-      <button class="role-btn" id="roleTablet" onclick="selectRole('tablet')">📟 Планшет</button>
-    </div>
-    <div class="lbl">Код чата (одинаковый на обоих)</div>
+    <div class="lbl">Код комнаты (поделись с друзьями)</div>
     <input type="text" id="roomInput" placeholder="Например: vova333" maxlength="30">
     <button class="btn-main" onclick="startChat()">Войти в чат →</button>
   </div>
-  <div class="hint">💡 Введи одинаковый код на обоих устройствах — и они соединятся</div>
+  <div class="hint">💡 Введи одинаковый <strong>код комнаты</strong> на всех устройствах — любое количество людей!</div>
 </div>
 
 <div id="chat">
   <div class="header">
     <div class="header-left">
-      <div class="avatar" id="partnerAvatar">?</div>
+      <div class="avatar" id="partnerAvatar">💬</div>
       <div>
-        <div class="chat-name" id="partnerName">Ждём...</div>
-        <div class="chat-status"><span class="dot" id="statusDot"></span><span id="statusText">офлайн</span></div>
+        <div class="chat-name" id="partnerName">Чат</div>
+        <div class="chat-status"><span class="dot on" id="statusDot"></span><span id="statusText">0 онлайн</span></div>
       </div>
     </div>
     <button class="exit-btn" onclick="exitChat()">Выйти</button>
@@ -232,7 +227,7 @@ input[type=text] {
   </div>
 </div>
 
-<input type="file" id="fileInput" accept="image/*,video/*">
+<input type="file" id="fileInput" accept="image/*,video/*,audio/*,.pdf">
 
 <div id="lightbox" onclick="closeLightbox()">
   <button id="lightbox-close" onclick="closeLightbox()">✕</button>
@@ -247,18 +242,12 @@ var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSI
 var BUCKET = 'media';
 
 var myName = '';
-var myRole = 'phone';
 var roomId = '';
 var lastId = 0;
 var pollTimer = null;
 var heartbeatTimer = null;
 var statusTimer = null;
-
-function selectRole(r) {
-  myRole = r;
-  document.getElementById('rolePhone').className = 'role-btn' + (r === 'phone' ? ' active' : '');
-  document.getElementById('roleTablet').className = 'role-btn' + (r === 'tablet' ? ' active' : '');
-}
+var myHbId = null;
 
 function startChat() {
   var nameVal = document.getElementById('nameInput').value;
@@ -268,10 +257,8 @@ function startChat() {
   if (!myName) { showNotif('Введи своё имя'); return; }
   if (!roomId) { showNotif('Введи код чата'); return; }
 
-  var partnerLabel = myRole === 'phone' ? 'Планшет' : 'Телефон';
-  var partnerEmoji = myRole === 'phone' ? '📟' : '📱';
-  document.getElementById('partnerName').textContent = partnerLabel;
-  document.getElementById('partnerAvatar').textContent = partnerEmoji;
+  myHbId = myName + '_' + Date.now();
+  document.getElementById('partnerName').textContent = roomId;
 
   document.getElementById('setup').style.display = 'none';
   var chatEl = document.getElementById('chat');
@@ -282,8 +269,9 @@ function startChat() {
   loadMessages();
   pollTimer = setInterval(pollMessages, 3000);
   heartbeatTimer = setInterval(sendHeartbeat, 8000);
-  statusTimer = setInterval(checkStatus, 6000);
+  statusTimer = setInterval(checkStatus, 5000);
   sendHeartbeat();
+  checkStatus();
 }
 
 function req(method, path, data, cb) {
@@ -351,6 +339,18 @@ function renderMsg(m) {
   } else if (text.indexOf('[video]') === 0) {
     var url = text.replace('[video]', '');
     html += '<video class="msg-video" src="' + url + '" controls playsinline webkit-playsinline></video>';
+  } else if (text.indexOf('[audio]') === 0) {
+    var url = text.replace('[audio]', '');
+    var name = url.split('/').pop();
+    html += '<div style="margin-top:4px"><div style="font-size:12px;color:#00e5a0;margin-bottom:4px">🎵 ' + esc(name) + '</div><audio controls style="width:100%;max-width:260px"><source src="' + url + '"><a href="' + url + '" target="_blank" class="msg-link">Открыть музыку</a></audio></div>';
+  } else if (text.indexOf('[pdf]') === 0) {
+    var url = text.replace('[pdf]', '');
+    var name = url.split('/').pop();
+    html += '<a href="' + url + '" target="_blank" class="msg-link">📄 ' + esc(decodeURIComponent(name)) + '</a>';
+  } else if (text.indexOf('[file]') === 0) {
+    var url = text.replace('[file]', '');
+    var name = url.split('/').pop();
+    html += '<a href="' + url + '" target="_blank" class="msg-link">📎 ' + esc(decodeURIComponent(name)) + '</a>';
   } else {
     html += '<div>' + esc(text) + '</div>';
   }
@@ -377,6 +377,7 @@ document.getElementById('fileInput').addEventListener('change', function() {
   this.value = '';
 
   var isVideo = file.type.indexOf('video') === 0;
+  var isAudio = file.type.indexOf('audio') === 0;
   var ext = file.name.split('.').pop();
   var fileName = Date.now() + '_' + Math.random().toString(36).substr(2, 6) + '.' + ext;
 
@@ -385,7 +386,7 @@ document.getElementById('fileInput').addEventListener('change', function() {
   var bar = document.getElementById('progressBar');
   var label = document.getElementById('uploadLabel');
   prog.style.display = 'block';
-  label.textContent = isVideo ? 'Загружаю видео...' : 'Загружаю фото...';
+  label.textContent = isVideo ? 'Загружаю видео...' : isAudio ? 'Загружаю музыку...' : 'Загружаю файл...';
   bar.style.width = '0%';
 
   var xhr = new XMLHttpRequest();
@@ -406,7 +407,11 @@ document.getElementById('fileInput').addEventListener('change', function() {
       prog.style.display = 'none';
       if (xhr.status >= 200 && xhr.status < 300) {
         var publicUrl = SUPABASE_URL + '/storage/v1/object/public/' + BUCKET + '/' + fileName;
-        var prefix = isVideo ? '[video]' : '[img]';
+        var prefix = '[file]';
+        if (isVideo) prefix = '[video]';
+        else if (file.type.indexOf('image') === 0) prefix = '[img]';
+        else if (file.type.indexOf('audio') === 0) prefix = '[audio]';
+        else if (file.type === 'application/pdf') prefix = '[pdf]';
         req('POST', 'messages', { room: roomId, sender: myName, text: prefix + publicUrl }, function(s) {
           if (s < 200 || s > 299) showNotif('Ошибка отправки');
         });
@@ -432,32 +437,39 @@ function closeLightbox() {
 }
 
 function sendHeartbeat() {
-  var hbRoom = '__hb_' + myRole + '_' + roomId;
-  req('GET', 'messages?room=eq.' + encodeURIComponent(hbRoom) + '&sender=eq.' + encodeURIComponent(myName), null, function(status, data) {
+  var hbRoom = '__hb_' + roomId;
+  req('GET', 'messages?room=eq.' + encodeURIComponent(hbRoom) + '&sender=eq.' + encodeURIComponent(myHbId), null, function(status, data) {
     if (data && data.length > 0) {
-      req('PATCH', 'messages?room=eq.' + encodeURIComponent(hbRoom) + '&sender=eq.' + encodeURIComponent(myName), { text: String(Date.now()) }, null);
+      req('PATCH', 'messages?room=eq.' + encodeURIComponent(hbRoom) + '&sender=eq.' + encodeURIComponent(myHbId), { text: String(Date.now()) }, null);
     } else {
-      req('POST', 'messages', { room: hbRoom, sender: myName, text: String(Date.now()) }, null);
+      req('POST', 'messages', { room: hbRoom, sender: myHbId, text: String(Date.now()) }, null);
     }
   });
 }
 
 function checkStatus() {
-  var partnerRole = myRole === 'phone' ? 'tablet' : 'phone';
-  var hbRoom = '__hb_' + partnerRole + '_' + roomId;
-  req('GET', 'messages?room=eq.' + encodeURIComponent(hbRoom) + '&limit=1', null, function(status, data) {
-    var dot = document.getElementById('statusDot');
+  var hbRoom = '__hb_' + roomId;
+  req('GET', 'messages?room=eq.' + encodeURIComponent(hbRoom) + '&limit=50', null, function(status, data) {
     var st = document.getElementById('statusText');
+    var online = 0;
+    var now = Date.now();
     if (data && data.length > 0) {
-      var ts = parseInt(data[0].text, 10);
-      if (Date.now() - ts < 25000) { dot.className = 'dot on'; st.textContent = 'онлайн'; return; }
+      for (var i = 0; i < data.length; i++) {
+        var ts = parseInt(data[i].text, 10);
+        if (now - ts < 25000) online++;
+      }
     }
-    dot.className = 'dot'; st.textContent = 'офлайн';
+    st.textContent = online + ' онлайн';
   });
 }
 
 function exitChat() {
   clearInterval(pollTimer); clearInterval(heartbeatTimer); clearInterval(statusTimer);
+  // Remove our heartbeat
+  if (myHbId) {
+    var hbRoom = '__hb_' + roomId;
+    req('PATCH', 'messages?room=eq.' + encodeURIComponent(hbRoom) + '&sender=eq.' + encodeURIComponent(myHbId), { text: '0' }, null);
+  }
   lastId = 0;
   document.getElementById('messages').innerHTML = '<div class="empty" id="emptyState">💬 Сообщений пока нет<br><span style="font-size:12px">Напиши первым!</span></div>';
   var setupEl = document.getElementById('setup');
