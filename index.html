@@ -556,8 +556,16 @@ function doLogin() {
         showToast('Неверный пароль');
       }
     } else {
+      showToast('Создаю аккаунт...');
       req('POST', 'users?on_conflict=username', {username: val, password_hash: hash, created_at: new Date().toISOString()}, function(s2, d2) {
-        myName = val; finishLogin();
+        if (s2 >= 400) {
+          // RLS или другая ошибка — пробуем PATCH
+          req('PATCH', 'users?username=eq.' + encodeURIComponent(val), {password_hash: hash}, function(s3, d3) {
+            myName = val; finishLogin();
+          });
+        } else {
+          myName = val; finishLogin();
+        }
       });
     }
   });
