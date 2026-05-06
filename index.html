@@ -31,12 +31,16 @@ body{
   font-family:var(--font);
   height:100vh;
   overflow:hidden;
+  display:-webkit-box;
+  display:-webkit-flex;
   display:flex;
+  -webkit-box-orient:vertical;
+  -webkit-flex-direction:column;
   flex-direction:column;
 }
 
-.screen{position:fixed;inset:0;display:none;flex-direction:column;z-index:10;background:var(--bg);}
-.screen.active{display:flex;}
+.screen{position:fixed;top:0;left:0;right:0;bottom:0;display:none;-webkit-box-orient:vertical;-webkit-flex-direction:column;flex-direction:column;z-index:10;background:var(--bg);}
+.screen.active{display:-webkit-box;display:-webkit-flex;display:flex;}
 
 /* LOGIN */
 #screenLogin{align-items:center;justify-content:center;padding:24px;}
@@ -167,14 +171,15 @@ body{
 .action-item.danger{color:var(--danger);}
 
 /* LIGHTBOX */
-#lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:999;align-items:center;justify-content:center;}
-#lightbox.open{display:flex;}
+#lightbox{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.95);z-index:999;-webkit-box-align:center;align-items:center;-webkit-justify-content:center;justify-content:center;}
+#lightbox.open{display:-webkit-box;display:-webkit-flex;display:flex;}
 #lightbox img{max-width:100%;max-height:100%;}
 #lightbox-close{position:absolute;top:16px;right:16px;background:rgba(255,255,255,.1);border:none;color:#fff;font-size:28px;width:48px;height:48px;border-radius:24px;cursor:pointer;line-height:48px;text-align:center;touch-action:manipulation;}
 
 /* BANNER */
 .msg-banner{display:none;position:fixed;top:0;left:0;right:0;z-index:600;padding:10px 14px;background:rgba(15,20,16,.97);border-bottom:1px solid var(--border);}
 .msg-banner.show{display:block;}
+.modal-bg.open{display:-webkit-box;display:-webkit-flex;display:flex;}
 .banner-inner{display:flex;align-items:center;max-width:500px;margin:0 auto;}
 .banner-icon{width:36px;height:36px;border-radius:18px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:16px;margin-right:10px;flex-shrink:0;}
 .banner-body{flex:1;overflow:hidden;}
@@ -186,10 +191,10 @@ body{
 .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--accent);color:#000;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:700;display:none;z-index:500;font-family:var(--font);white-space:nowrap;}
 
 /* OVERLAY */
-#overlay{display:none;position:fixed;inset:0;z-index:290;}
+#overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:290;}
 
 /* MODAL */
-.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:400;align-items:center;justify-content:center;}
+.modal-bg{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.75);z-index:400;-webkit-box-align:center;align-items:center;-webkit-justify-content:center;justify-content:center;}
 .modal-bg.open{display:flex;}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px;width:90%;max-width:340px;position:relative;}
 .modal h2{font-size:16px;font-weight:700;margin-bottom:16px;color:var(--accent);}
@@ -462,24 +467,24 @@ var circleTimer = null;
 var circleSeconds = 0;
 var circleRecording = false;
 
-// ===== HASH (SHA-256 via Web Crypto) =====
-async function hashPassword(password) {
+// ===== HASH (simple, compatible with old Safari) =====
+function hashPassword(password) {
+  // Simple but consistent djb2-based hash - no async needed
   if (!password) return '';
-  try {
-    var encoder = new TextEncoder();
-    var data = encoder.encode(password + '_mychat_salt');
-    var hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    var hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
-  } catch(e) {
-    // Fallback: simple djb2 hash for older devices
-    var h = 5381;
-    for (var i = 0; i < password.length; i++) {
-      h = ((h << 5) + h) + password.charCodeAt(i);
-      h = h & h;
-    }
-    return 'fb_' + Math.abs(h).toString(16);
+  var str = password + '_mychat_v2_' + password.length;
+  var h1 = 5381, h2 = 52711;
+  for (var i = 0; i < str.length; i++) {
+    var c = str.charCodeAt(i);
+    h1 = ((h1 << 5) + h1) ^ c;
+    h2 = ((h2 << 5) + h2) ^ c;
+    h1 = h1 & h1; h2 = h2 & h2;
   }
+  var a = Math.abs(h1).toString(16);
+  var b = Math.abs(h2).toString(16);
+  // pad to make longer
+  while(a.length < 8) a = '0' + a;
+  while(b.length < 8) b = '0' + b;
+  return 'h_' + a + b + str.length.toString(16);
 }
 
 // ===== THEME =====
@@ -546,35 +551,26 @@ function doLogin() {
   if (!val || val.length < 2) { showToast('Введи username (мин. 2 символа)'); return; }
   if (!pass || pass.length < 4) { showToast('Пароль минимум 4 символа'); return; }
 
-  hashPassword(pass).then(function(hash) {
-    // Check if user exists
-    req('GET', 'users?username=eq.' + encodeURIComponent(val), null, function(s, data) {
-      if (data && data.length > 0) {
-        var user = data[0];
-        if (!user.password_hash) {
-          // Old account without password — set it now
-          req('PATCH', 'users?username=eq.' + encodeURIComponent(val), {password_hash: hash}, function() {
-            myName = val;
-            finishLogin();
-          });
-        } else if (user.password_hash === hash) {
-          myName = val;
-          finishLogin();
-        } else {
-          showToast('❌ Неверный пароль');
-        }
-      } else {
-        // New user — register
-        req('POST', 'users?on_conflict=username', {
-          username: val,
-          password_hash: hash,
-          created_at: new Date().toISOString()
-        }, function(s2, d2) {
-          myName = val;
-          finishLogin();
+  var hash = hashPassword(pass);
+  req('GET', 'users?username=eq.' + encodeURIComponent(val), null, function(s, data) {
+    if (data && data.length > 0) {
+      var user = data[0];
+      if (!user.password_hash) {
+        req('PATCH', 'users?username=eq.' + encodeURIComponent(val), {password_hash: hash}, function() {
+          myName = val; finishLogin();
         });
+      } else if (user.password_hash === hash) {
+        myName = val; finishLogin();
+      } else {
+        showToast('❌ Неверный пароль');
       }
-    });
+    } else {
+      req('POST', 'users?on_conflict=username', {
+        username: val, password_hash: hash, created_at: new Date().toISOString()
+      }, function(s2, d2) {
+        myName = val; finishLogin();
+      });
+    }
   });
 }
 
@@ -612,11 +608,10 @@ function loadProfile() {
 function changePassword() {
   var newPass = document.getElementById('newPassInput').value;
   if (!newPass || newPass.length < 4) { showToast('Пароль минимум 4 символа'); return; }
-  hashPassword(newPass).then(function(hash) {
-    req('PATCH', 'users?username=eq.' + encodeURIComponent(myName), {password_hash: hash}, function() {
-      showToast('✅ Пароль изменён!');
-      document.getElementById('newPassInput').value = '';
-    });
+  var hash = hashPassword(newPass);
+  req('PATCH', 'users?username=eq.' + encodeURIComponent(myName), {password_hash: hash}, function() {
+    showToast('✅ Пароль изменён!');
+    document.getElementById('newPassInput').value = '';
   });
 }
 
