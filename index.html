@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>MyChat</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:rgba(0,229,122,0.2);}
+button{cursor:pointer;-webkit-user-select:none;user-select:none;}
+div[onclick]{cursor:pointer;-webkit-user-select:none;user-select:none;}
 
 :root{
   --bg:#080c0a;
@@ -245,7 +247,7 @@ body{
     <input type="text" class="field-input" id="loginUsername" placeholder="@username" maxlength="24" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
     <div class="field-label">Пароль</div>
     <input type="password" class="field-input" id="loginPassword" placeholder="Придумай или введи пароль" autocomplete="off">
-    <button type="button" class="btn-primary" onclick="doLogin()">Войти →</button>
+    <button type="button" class="btn-primary" id="btnLogin">Войти →</button>
     <p class="hint-text">Пароль защищает твой аккаунт.<br>При первом входе — придумай новый.</p>
   </div>
 </div>
@@ -255,8 +257,8 @@ body{
   <div class="topbar">
     <div class="topbar-title">MyChat</div>
     <div class="topbar-actions">
-      <button type="button" class="icon-btn" onclick="showScreen('screenProfile')">👤</button>
-      <button type="button" class="icon-btn" onclick="logout()">Exit</button>
+      <button type="button" class="icon-btn" id="btnProfile">👤</button>
+      <button type="button" class="icon-btn" id="btnLogout">Exit</button>
     </div>
   </div>
   <div class="search-wrap" style="position:relative;">
@@ -285,7 +287,7 @@ body{
 <div class="screen" id="screenChat">
   <div class="chat-header">
     <div class="chat-header-left">
-      <button type="button" class="back-btn" onclick="backToHome()">‹</button>
+      <button type="button" class="back-btn" id="btnBack">‹</button>
       <div class="ch-avatar" id="chAvatar"></div>
       <div>
         <div class="ch-name" id="chName"></div>
@@ -293,8 +295,8 @@ body{
       </div>
     </div>
     <div class="topbar-actions">
-      <button type="button" class="icon-btn" id="soundBtn" onclick="toggleSound()">🔔</button>
-      <button type="button" class="icon-btn" onclick="showThemePicker()">🎨</button>
+      <button type="button" class="icon-btn" id="soundBtn">🔔</button>
+      <button type="button" class="icon-btn" id="btnTheme">🎨</button>
     </div>
   </div>
   <div class="upload-progress" id="uploadProgress">
@@ -307,14 +309,14 @@ body{
   <div class="reply-bar" id="replyBar">
     <div class="reply-bar-inner">
       <div class="reply-preview" id="replyPreview">Ответ</div>
-      <button type="button" class="reply-cancel" onclick="cancelReply()">✕</button>
+      <button type="button" class="reply-cancel" id="btnCancelReply">✕</button>
     </div>
   </div>
   <div class="input-wrap">
-    <button type="button" class="attach-btn" onclick="document.getElementById('fileInput').click()">📎</button>
-    <button type="button" class="circle-btn" onclick="openCircleModal()" title="Видеокружок">⏺</button>
+    <button type="button" class="attach-btn" id="btnAttach">📎</button>
+    <button type="button" class="circle-btn" id="btnCircle" title="Видеокружок">⏺</button>
     <textarea id="msgInput" rows="1" placeholder="Написать..."></textarea>
-    <button type="button" class="send-btn" onclick="sendMessage()">➤</button>
+    <button type="button" class="send-btn" id="btnSend">➤</button>
   </div>
 </div>
 
@@ -323,7 +325,7 @@ body{
   <div class="topbar">
     <div class="topbar-title">Профиль</div>
     <div class="topbar-actions">
-      <button type="button" class="icon-btn" onclick="showScreen('screenHome')">← Назад</button>
+      <button type="button" class="icon-btn" id="btnBackProfile">← Назад</button>
     </div>
   </div>
   <div class="profile-header-bg"></div>
@@ -335,32 +337,31 @@ body{
   <div class="profile-section">
     <div class="profile-section-title">Сменить пароль</div>
     <input type="password" class="field-input" id="newPassInput" placeholder="Новый пароль" style="margin-bottom:10px;">
-    <button type="button" class="btn-primary" onclick="changePassword()" style="margin-top:0;">Сохранить пароль</button>
+    <button type="button" class="btn-primary" id="btnSavePass" style="margin-top:0;">Сохранить пароль</button>
   </div>
   <div class="profile-section">
     <div class="profile-section-title">Аккаунт</div>
-    <button type="button" class="btn-secondary" onclick="logout()">Выйти из аккаунта</button>
+    <button type="button" class="btn-secondary" id="btnLogout2">Выйти из аккаунта</button>
   </div>
 </div>
 
-<!-- ACTION MENU -->
-<div id="overlay" onclick="closeActionMenu()"></div>
-<div id="actionMenu">
-  <div class="action-emojis" id="reactionEmojis">
-    <button type="button" class="action-emoji" onclick="addReaction('👍')">👍</button>
-    <button type="button" class="action-emoji" onclick="addReaction('❤️')">❤️</button>
-    <button type="button" class="action-emoji" onclick="addReaction('😂')">😂</button>
-    <button type="button" class="action-emoji" onclick="addReaction('😮')">😮</button>
-    <button type="button" class="action-emoji" onclick="addReaction('😢')">😢</button>
-    <button type="button" class="action-emoji" onclick="addReaction('🔥')">🔥</button>
-    <button type="button" class="action-emoji" onclick="addReaction('👎')">👎</button>
-    <button type="button" class="action-emoji" onclick="addReaction('🎉')">🎉</button>
-    <button type="button" class="action-emoji" onclick="addReaction('💯')">💯</button>
-    <button type="button" class="action-emoji" onclick="addReaction('😍')">😍</button>
+  <div id="overlay"></div>
+  <div id="actionMenu">
+    <div class="action-emojis" id="reactionEmojis">
+      <button type="button" class="action-emoji" data-emoji="👍">👍</button>
+      <button type="button" class="action-emoji" data-emoji="❤️">❤️</button>
+      <button type="button" class="action-emoji" data-emoji="😂">😂</button>
+      <button type="button" class="action-emoji" data-emoji="😮">😮</button>
+      <button type="button" class="action-emoji" data-emoji="😢">😢</button>
+      <button type="button" class="action-emoji" data-emoji="🔥">🔥</button>
+      <button type="button" class="action-emoji" data-emoji="👎">👎</button>
+      <button type="button" class="action-emoji" data-emoji="🎉">🎉</button>
+      <button type="button" class="action-emoji" data-emoji="💯">💯</button>
+      <button type="button" class="action-emoji" data-emoji="😍">😍</button>
+    </div>
+    <button type="button" class="action-item" id="btnReply">↩️ Ответить</button>
+    <button type="button" class="action-item danger" id="deleteBtn" style="display:none">🗑 Удалить</button>
   </div>
-  <button type="button" class="action-item" onclick="replyTo()">↩️ Ответить</button>
-  <button type="button" class="action-item danger" id="deleteBtn" onclick="deleteMsg()" style="display:none">🗑 Удалить</button>
-</div>
 
 <!-- LIGHTBOX -->
 <div id="lightbox" onclick="closeLightbox()">
@@ -376,7 +377,7 @@ body{
       <div class="banner-sender" id="bannerSender"></div>
       <div class="banner-text" id="bannerText"></div>
     </div>
-    <button type="button" class="banner-close" onclick="closeBanner()">✕</button>
+    <button type="button" class="banner-close" id="btnCloseBanner">✕</button>
   </div>
 </div>
 
@@ -384,15 +385,15 @@ body{
 <div class="modal-bg" id="themeModal">
   <div class="modal">
     <h2>🎨 Тема</h2>
-    <button type="button" class="modal-close" onclick="hideThemePicker()">✕</button>
-    <div style="display:flex;gap:14px;flex-wrap:wrap;padding:8px 0;">
-      <div onclick="setTheme('green')" style="width:48px;height:48px;border-radius:24px;background:#00e57a;cursor:pointer;border:3px solid transparent;" id="th-green"></div>
-      <div onclick="setTheme('blue')" style="width:48px;height:48px;border-radius:24px;background:#4a9eff;cursor:pointer;border:3px solid transparent;" id="th-blue"></div>
-      <div onclick="setTheme('purple')" style="width:48px;height:48px;border-radius:24px;background:#b47eff;cursor:pointer;border:3px solid transparent;" id="th-purple"></div>
-      <div onclick="setTheme('red')" style="width:48px;height:48px;border-radius:24px;background:#ff5555;cursor:pointer;border:3px solid transparent;" id="th-red"></div>
-      <div onclick="setTheme('orange')" style="width:48px;height:48px;border-radius:24px;background:#ff9500;cursor:pointer;border:3px solid transparent;" id="th-orange"></div>
+    <button type="button" class="modal-close" id="btnCloseTheme">✕</button>
+    <div style="display:-webkit-box;display:-webkit-flex;display:flex;gap:14px;flex-wrap:wrap;padding:8px 0;">
+      <div data-theme="green" style="width:48px;height:48px;border-radius:24px;background:#00e57a;cursor:pointer;border:3px solid transparent;" id="th-green"></div>
+      <div data-theme="blue" style="width:48px;height:48px;border-radius:24px;background:#4a9eff;cursor:pointer;border:3px solid transparent;" id="th-blue"></div>
+      <div data-theme="purple" style="width:48px;height:48px;border-radius:24px;background:#b47eff;cursor:pointer;border:3px solid transparent;" id="th-purple"></div>
+      <div data-theme="red" style="width:48px;height:48px;border-radius:24px;background:#ff5555;cursor:pointer;border:3px solid transparent;" id="th-red"></div>
+      <div data-theme="orange" style="width:48px;height:48px;border-radius:24px;background:#ff9500;cursor:pointer;border:3px solid transparent;" id="th-orange"></div>
     </div>
-    <button type="button" class="btn-secondary" onclick="hideThemePicker()">Закрыть</button>
+    <button type="button" class="btn-secondary" id="btnCloseTheme2">Закрыть</button>
   </div>
 </div>
 
@@ -400,14 +401,14 @@ body{
 <div class="modal-bg" id="newGroupModal">
   <div class="modal" style="max-height:80vh;overflow-y:auto;">
     <h2>➕ Новая группа</h2>
-    <button type="button" class="modal-close" onclick="closeNewGroupModal()">✕</button>
+    <button type="button" class="modal-close" id="btnCloseGroup">✕</button>
     <div class="field-label">Название группы</div>
     <input type="text" class="field-input" id="newGroupName" placeholder="Например: Команда" maxlength="30" autocomplete="off">
     <div class="field-label" style="margin-top:14px;">Добавить участников</div>
-    <input type="text" class="field-input" id="groupMemberSearch" placeholder="Поиск по username" oninput="searchGroupMembers(this.value)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <input type="text" class="field-input" id="groupMemberSearch" placeholder="Поиск по username" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
     <div class="chips-wrap" id="selectedChips"></div>
     <div id="groupMemberList" style="margin-top:6px;max-height:180px;overflow-y:auto;"></div>
-    <button type="button" class="btn-primary" onclick="createGroup()" style="margin-top:14px;">Создать →</button>
+    <button type="button" class="btn-primary" id="btnCreateGroup" style="margin-top:14px;">Создать →</button>
   </div>
 </div>
 
@@ -415,13 +416,13 @@ body{
 <div class="modal-bg" id="circleModal">
   <div class="modal" id="circleModalInner">
     <h2>⏺ Видеокружок</h2>
-    <button type="button" class="modal-close" onclick="closeCircleModal()">✕</button>
+    <button type="button" class="modal-close" id="btnCloseCircle">✕</button>
     <div class="circle-preview-wrap">
       <video id="circlePreview" autoplay playsinline muted></video>
     </div>
     <div id="circleCountdown">0s</div>
     <div id="circleStatus">Нажми ⏺ для записи</div>
-    <div class="circle-rec-btn" id="circleRecBtn" onclick="toggleCircleRecord()">⏺</div>
+    <div class="circle-rec-btn" id="circleRecBtn">⏺</div>
   </div>
 </div>
 
@@ -429,6 +430,33 @@ body{
 <input type="file" id="fileInput" accept="image/*,video/*,audio/*,.pdf">
 
 <script>
+// ===== TOUCH POLYFILL для старых планшетов =====
+// Убирает 300ms задержку и чинит onclick на старых Android/iOS
+(function(){
+  var lastTouch = 0;
+  document.addEventListener('touchstart', function(){}, true); // активирует click на iOS
+  document.addEventListener('touchend', function(e){
+    var now = Date.now();
+    if (now - lastTouch < 500) return; // защита от двойного срабатывания
+    lastTouch = now;
+    var el = e.target;
+    // ищем кликабельный элемент вверх по дереву
+    for (var i = 0; i < 5; i++) {
+      if (!el || el === document.body) break;
+      var tag = el.tagName;
+      if (tag === 'BUTTON' || tag === 'A' || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') break;
+      if (el.getAttribute('onclick') || el.className.indexOf('chat-item') >= 0 ||
+          el.className.indexOf('new-group-btn') >= 0 || el.className.indexOf('search-result-item') >= 0 ||
+          el.className.indexOf('user-pick-item') >= 0 || el.className.indexOf('action-emoji') >= 0 ||
+          el.className.indexOf('tab') >= 0 || el.className.indexOf('reaction-badge') >= 0) {
+        e.preventDefault();
+        el.click();
+        return;
+      }
+      el = el.parentElement;
+    }
+  }, false);
+})();
 // ===== CONFIG =====
 var SUPABASE_URL = 'https://pmjycpsfmubdlcvmivxm.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtanljcHNmbXViZGxjdm1pdnhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4NTg5NjAsImV4cCI6MjA5MDQzNDk2MH0.lTorkv8Ky1Mh-3Ucz94GQAFrTv9OrKHFnKh1F3G9AFQ';
@@ -951,23 +979,111 @@ function renderMsg(m) {
 
 // ===== FILE UPLOAD =====
 document.addEventListener('DOMContentLoaded', function(){
+  // === BIND ALL BUTTONS VIA addEventListener (работает на старых планшетах) ===
+  function on(id, fn) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('click', fn, false);
+    el.addEventListener('touchend', function(e){ e.preventDefault(); fn(); }, false);
+  }
+
+  on('btnLogin', doLogin);
+  on('btnProfile', function(){ showScreen('screenProfile'); });
+  on('btnLogout', logout);
+  on('btnLogout2', logout);
+  on('btnBack', backToHome);
+  on('soundBtn', toggleSound);
+  on('btnTheme', showThemePicker);
+  on('btnAttach', function(){ document.getElementById('fileInput').click(); });
+  on('btnCircle', openCircleModal);
+  on('btnSend', sendMessage);
+  on('btnCancelReply', cancelReply);
+  on('btnSavePass', changePassword);
+  on('btnBackProfile', function(){ showScreen('screenHome'); });
+  on('lightbox-close', closeLightbox);
+  on('lightbox', closeLightbox);
+  on('btnCloseBanner', closeBanner);
+  on('btnCloseTheme', hideThemePicker);
+  on('btnCloseTheme2', hideThemePicker);
+  on('btnCloseGroup', closeNewGroupModal);
+  on('btnCreateGroup', createGroup);
+  on('btnCloseCircle', closeCircleModal);
+  on('circleRecBtn', toggleCircleRecord);
+  on('overlay', closeActionMenu);
+  on('btnReply', replyTo);
+  on('deleteBtn', deleteMsg);
+
+  // Theme swatches
+  ['green','blue','purple','red','orange'].forEach(function(name){
+    var el = document.getElementById('th-'+name);
+    if (!el) return;
+    el.addEventListener('click', function(){ setTheme(name); }, false);
+    el.addEventListener('touchend', function(e){ e.preventDefault(); setTheme(name); }, false);
+  });
+
+  // Emoji reactions
+  var emojiBtns = document.querySelectorAll('.action-emoji');
+  for (var i = 0; i < emojiBtns.length; i++) {
+    (function(btn){
+      var emoji = btn.getAttribute('data-emoji');
+      btn.addEventListener('click', function(){ addReaction(emoji); }, false);
+      btn.addEventListener('touchend', function(e){ e.preventDefault(); addReaction(emoji); }, false);
+    })(emojiBtns[i]);
+  }
+
+  // Tabs
+  var tabEls = document.querySelectorAll('.tab');
+  for (var t = 0; t < tabEls.length; t++) {
+    (function(tab){
+      var id = tab.id; // tabAll, tabDM, tabGroups
+      var name = id === 'tabAll' ? 'all' : id === 'tabDM' ? 'dm' : 'groups';
+      tab.addEventListener('click', function(){ switchTab(name); }, false);
+      tab.addEventListener('touchend', function(e){ e.preventDefault(); switchTab(name); }, false);
+    })(tabEls[t]);
+  }
+
+  // Search input
+  document.getElementById('homeSearch').addEventListener('input', function(){ onHomeSearch(this.value); }, false);
+  document.getElementById('groupMemberSearch').addEventListener('input', function(){ searchGroupMembers(this.value); }, false);
+
+  // File input
   document.getElementById('fileInput').addEventListener('change', function(e){
     var file = e.target.files[0];
     if (!file) return;
     uploadFile(file, null);
     e.target.value = '';
-  });
+  }, false);
+
+  // Textarea
   document.getElementById('msgInput').addEventListener('input', function(){
     this.style.height='';
     this.style.height = Math.min(this.scrollHeight, 120) + 'px';
-  });
+  }, false);
   document.getElementById('msgInput').addEventListener('keydown', function(e){
     if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); }
-  });
+  }, false);
+
+  // New group button in chat list (динамически создаётся, используем делегирование)
+  document.getElementById('chatList').addEventListener('click', function(e){
+    var el = e.target;
+    for (var i = 0; i < 4; i++) {
+      if (!el) break;
+      if (el.className && el.className.indexOf('new-group-btn') >= 0) { showNewGroupModal(); return; }
+      el = el.parentElement;
+    }
+  }, false);
+
+  // Login on Enter
+  document.getElementById('loginPassword').addEventListener('keydown', function(e){
+    if (e.key === 'Enter') doLogin();
+  }, false);
+  document.getElementById('loginUsername').addEventListener('keydown', function(e){
+    if (e.key === 'Enter') document.getElementById('loginPassword').focus();
+  }, false);
+
+  // Auto-prefill username
   var saved = localStorage.getItem('mc_username');
   if (saved) {
-    // Auto-login: but we need to show login again since password needed
-    // Just prefill username
     document.getElementById('loginUsername').value = saved;
     document.getElementById('loginPassword').focus();
   }
